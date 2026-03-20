@@ -1,3 +1,67 @@
 {
-  "regels": []
+  "regels": [
+    {
+      "code": "DAILY_VARIATION",
+      "label": "Dagvariaties",
+      "doelgroep": "CONSULTANT",
+      "actief": true,
+      "omschrijving": "Dagvariaties maar maandtotaal ok — 1x info"
+    },
+    {
+      "code": "HOLIDAY_WORKED",
+      "label": "Gelogd op feestdag",
+      "doelgroep": "PM",
+      "actief": true,
+      "omschrijving": "Boeking op feestdag gedetecteerd — 1x info aan PM"
+    },
+    {
+      "code": "NB_ON_PROJECT",
+      "label": "NB-uren op klantproject",
+      "doelgroep": "PM",
+      "actief": true,
+      "omschrijving": "Niet-billable uren op klantproject — 1x per maand aan PM"
+    },
+    {
+      "code": "NOT_CLOSED",
+      "label": "Niet afgesloten",
+      "doelgroep": "CONSULTANT",
+      "actief": true,
+      "omschrijving": "Timesheet gevuld maar niet afgesloten — dagelijks tot opgelost"
+    },
+    {
+      "code": "NO_PM_FOR_PROJECT",
+      "label": "Project zonder PM",
+      "doelgroep": "MP",
+      "actief": true,
+      "omschrijving": "ORD-nummer zonder PM-koppeling gedetecteerd"
+    },
+    {
+      "code": "OPEN_DAYS",
+      "label": "Open dagen",
+      "doelgroep": "CONSULTANT",
+      "actief": true,
+      "omschrijving": "Ontbrekende dagen vorige maand — dagelijks tot opgelost"
+    },
+    {
+      "code": "OPEN_DAYS_CONTRACTOR",
+      "label": "Open dagen (contractor)",
+      "doelgroep": "CONSULTANT",
+      "actief": true,
+      "omschrijving": "Ontbrekende dagen (contractor) — 1x op eerste werkdag"
+    },
+    {
+      "code": "OPEN_DAYS_REMINDER",
+      "label": "Herinnering open dagen",
+      "doelgroep": "CONSULTANT",
+      "actief": true,
+      "omschrijving": "Open dagen lopende maand — 1x op laatste werkdag"
+    },
+    {
+      "code": "OVER_HOURS",
+      "label": "Overuren",
+      "doelgroep": "ALL",
+      "actief": true,
+      "omschrijving": "Meer uren dan voorzien — 1x aan consultant en PM"
+    }
+  ]
 }
