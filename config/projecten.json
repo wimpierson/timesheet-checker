@@ -1,1 +1,24 @@
-{ "projecten": [] }
+{
+  "projecten": [
+    { "ord": "ORD07000", "klant": "Pizza Hut", "naam": "Pizza Belgium — IT/Marketing/PWA", "pm": "Erik Michiels", "status": "actief" },
+    { "ord": "ORD10922", "klant": "E5", "naam": "E5 Fashion — Support", "pm": "Tom Vrolix", "status": "actief" },
+    { "ord": "ORD12482", "klant": "Babylux", "naam": "BabyLux (Flexweb) — Magento 2 + Geboortelijsten + Voyado", "pm": "Alexander Adriaensen", "status": "actief" },
+    { "ord": "ORD13820", "klant": "River Woods", "naam": "River Woods — M2 DEV", "pm": "Tom Vrolix", "status": "actief" },
+    { "ord": "ORD16505", "klant": "Sioen", "naam": "Sioen/Sihold Industries — Support", "pm": "Jordy Janssens", "status": "actief" },
+    { "ord": "ORD16820", "klant": "Mundero", "naam": "Mundero — DEV F3", "pm": "Erik Michiels", "status": "actief" },
+    { "ord": "ORD16886", "klant": "VAR", "naam": "Var — Fase 4", "pm": "Jordy Janssens", "status": "actief" },
+    { "ord": "ORD16943", "klant": "Cibo", "naam": "Cibo — DEV", "pm": "Pieter Beckers", "status": "actief" },
+    { "ord": "ORD20933", "klant": "Zangersheide", "naam": "Zangersheide — Continue Development", "pm": "Jordy Janssens", "status": "actief" },
+    { "ord": "ORD24613", "klant": "Sioen", "naam": "Sihold — DXP-Base", "pm": "Jordy Janssens", "status": "actief" },
+    { "ord": "ORD25011", "klant": "Babylux", "naam": "BabyLux — Marello", "pm": "Alexander Adriaensen", "status": "actief" },
+    { "ord": "ORD25809", "klant": "Cera", "naam": "Cera — T&M", "pm": "Alexander Adriaensen", "status": "actief" },
+    { "ord": "ORD26026", "klant": "Orac", "naam": "Orac NV/NSpire Group — Continuous Development", "pm": "Alexander Adriaensen", "status": "actief" },
+    { "ord": "ORD26157", "klant": "Impermo", "naam": "Impermo — Overname/Doorontwikkeling", "pm": "Sandy Peeters", "status": "actief" },
+    { "ord": "ORD26891", "klant": "Cairox", "naam": "Cairox Belgium — B2B development", "pm": "Pieter Beckers", "status": "actief" },
+    { "ord": "ORD27016", "klant": "Falk & Ross", "naam": "Falk & Ross / Induxx — E-com", "pm": "Karl Steinhauer", "status": "actief" },
+    { "ord": "ORD27166", "klant": "Impermo", "naam": "Impermo — Launchshop", "pm": "Sandy Peeters", "status": "actief" },
+    { "ord": "ORD27211", "klant": "Exxtra", "naam": "Exxtra — Varia Q1/2026", "pm": "Sandy Peeters", "status": "actief" },
+    { "ord": "ORD27224", "klant": "Arvesta", "naam": "Arvesta — EcomExcellence", "pm": "Sandy Peeters", "status": "actief" },
+    { "ord": "ORD27301", "klant": "Arvesta", "naam": "Arvesta — DDMA-II", "pm": "Sandy Peeters", "status": "actief" }
+  ]
+}
