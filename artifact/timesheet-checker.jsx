@@ -19,6 +19,11 @@ const css = `
   .topbar .logo { font-size: 13px; font-weight: 600; letter-spacing: 0.5px; }
   .topbar .page { font-size: 13px; color: rgba(255,255,255,0.5); }
   .topbar .page.active { color: rgba(255,255,255,0.9); }
+  .topbar-spacer { flex: 1; }
+  .topbar-user { font-size: 12px; color: rgba(255,255,255,0.55); display: flex; align-items: center; gap: 8px; }
+  .topbar-user .avatar { width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: white; }
+  .topbar-user .switch-btn { background: none; border: none; color: rgba(255,255,255,0.4); font-size: 11px; cursor: pointer; font-family: inherit; padding: 0; text-decoration: underline; }
+  .topbar-user .switch-btn:hover { color: rgba(255,255,255,0.75); }
   .main { padding: 28px; }
   .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
   .month-nav { display: flex; align-items: center; gap: 10px; }
@@ -85,7 +90,29 @@ const css = `
   .upload-card p { font-size: 13px; color: var(--muted); }
   .ord-warn { background: var(--error-bg); border: 1px solid var(--error-border); border-radius: 8px; padding: 10px 16px; font-size: 12px; color: var(--error); margin-bottom: 14px; font-family: var(--mono); }
   .no-res { padding: 40px; text-align: center; color: var(--muted); font-size: 14px; }
+  .role-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; }
+  .role-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 10px; }
+  .role-title { font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .role-sub { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+  .role-grid { display: grid; grid-template-columns: repeat(2, 180px); gap: 12px; }
+  .role-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 10px; padding: 18px 20px; cursor: pointer; transition: border-color 0.15s; }
+  .role-card:hover { border-color: #888; }
+  .role-card.selected { border: 1.5px solid #1A1917; }
+  .role-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 12px; }
+  .role-card.selected .role-avatar { background: #1A1917; color: white; }
+  .role-naam { font-size: 14px; font-weight: 600; color: var(--text); }
+  .role-functie { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .role-hint { font-size: 11px; color: var(--muted); margin-top: 20px; }
 `;
+
+const BEHEERDERS = [
+  { naam: "Wim Pierson",        initials: "WP", functie: "Managing Partner", tia_naam: "Pierson Wim" },
+  { naam: "Nathalie De Martin", initials: "ND", functie: "Managing Partner", tia_naam: "De Martin Nathalie" },
+  { naam: "Jeroen Smolders",    initials: "JS", functie: "Managing Partner", tia_naam: "Smolders Jeroen" },
+  { naam: "Kenny Rassin",       initials: "KR", functie: "Managing Partner", tia_naam: "Rassin Kenny" },
+];
+
+const STORAGE_KEY = "selected_user";
 
 function parseCSV(text) {
   const lines = text.trim().split(/\r?\n/);
@@ -108,19 +135,16 @@ function parseHours(v) { return parseFloat((v||"").replace(",",".")) || 0; }
 function parseDate(v) {
   if (!v) return null;
   if (v.includes("/")) { const [d,m,y] = v.split("/"); return new Date(+y,+m-1,+d); }
-  // Gebruik lokale constructie om UTC-offset bug te vermijden
   const parts = v.split("-");
   if (parts.length === 3) return new Date(+parts[0], +parts[1]-1, +parts[2]);
   return new Date(v);
 }
 function iso(d) {
-  // Lokale datumstring om UTC-offset bug te vermijden
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 function getWorkDays(y, m, hols) {
   const days = [], d = new Date(y, m-1, 1);
   while (d.getMonth() === m-1) {
-    // Gebruik lokale datumconstructie om UTC-offset bug te vermijden
     const localIso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     if (d.getDay()!==0 && d.getDay()!==6 && !hols.has(localIso)) days.push(localIso);
     d.setDate(d.getDate()+1);
@@ -135,8 +159,6 @@ function ordKey(code, desc) {
 function analyze(rows, consultants, projecten) {
   const cmap0 = {};
   consultants.forEach(c => cmap0[c.tia_naam] = c);
-
-  // Pre-pass: feestdagen per taal (alleen "Feestdagen" code, XPLGC = gewone verlof)
   const holsByLang = {};
   rows.forEach(r => {
     if (r.TsCodeDescription !== "Feestdagen") return;
@@ -146,35 +168,25 @@ function analyze(rows, consultants, projecten) {
     holsByLang[lang].add(iso(d));
   });
   const hols = holsByLang["nl"] || new Set();
-
-  // Pre-pass: billable ORDs
   const billable = new Set();
   rows.forEach(r => { if (r.IsBillable==="Billable") { const o=ordKey(r.TsCode,r.TsCodeDescription); if(o) billable.add(o); } });
-
-  // Pre-pass: ORDs zonder PM
   const allOrds = new Set();
   rows.forEach(r => { const o=ordKey(r.TsCode,r.TsCodeDescription); if(o) allOrds.add(o); });
-  // Enkel ORDs flaggen die volledig onbekend zijn — intern/detachering/actief worden allemaal geskipt
   const projSet = new Set(projecten.map(p=>p.ord.toUpperCase()));
   const ordsZonderPM = [...allOrds].filter(o=>!projSet.has(o));
-
   const fd = parseDate(rows[0]?.WorkDate);
   const year = fd?.getFullYear()||new Date().getFullYear();
   const month = fd ? fd.getMonth()+1 : new Date().getMonth()+1;
   const workDays = getWorkDays(year, month, hols);
   const exp = workDays.length * 8;
-
   const byEmp = {};
   rows.forEach(r => { if(!byEmp[r.Employee]) byEmp[r.Employee]=[]; byEmp[r.Employee].push(r); });
   const cmap = {};
   consultants.forEach(c => cmap[c.tia_naam] = c);
-
   const results = [];
   for (const [emp, rs] of Object.entries(byEmp)) {
     const cfg = cmap[emp]||null;
     const isContractor = cfg?.type==="contractor";
-
-    // Dagmap opbouwen
     const dm = {};
     rs.forEach(r => {
       const d=parseDate(r.WorkDate); if(!d) return;
@@ -183,14 +195,11 @@ function analyze(rows, consultants, projecten) {
       dm[i].hours += parseHours(r.ActualHours);
       if(r.Completed==="Completed") dm[i].completed=true;
     });
-
     const total = Object.values(dm).reduce((s,d)=>s+d.hours,0);
     const missing = workDays.filter(d=>!dm[d]||dm[d].hours===0);
     const notClosed = workDays.filter(d=>dm[d]&&dm[d].hours>0&&!dm[d].completed);
     const partial = workDays.filter(d=>dm[d]&&dm[d].hours>0&&dm[d].hours<8);
     const over = Math.round(total*100)/100 > exp ? total-exp : 0;
-
-    // HOLIDAY_WORKED: per taal van consultant
     const empLang = cfg?.taal || "nl";
     const empHols = holsByLang[empLang] || new Set();
     const holWorked = [];
@@ -199,8 +208,6 @@ function analyze(rows, consultants, projecten) {
       const i=iso(d);
       if(empHols.has(i)&&r.TsCodeDescription!=="Feestdagen"&&parseHours(r.ActualHours)>0&&!holWorked.includes(i)) holWorked.push(i);
     });
-
-    // WEEKEND_WORKED
     const weekendWorked = [];
     rs.forEach(r => {
       const d=parseDate(r.WorkDate); if(!d) return;
@@ -209,13 +216,9 @@ function analyze(rows, consultants, projecten) {
         if(parseHours(r.ActualHours)>0&&!weekendWorked.includes(i)) weekendWorked.push(i);
       }
     });
-
-    // NB_ON_PROJECT
     const nbRows = rs.filter(r=>r.IsBillable!=="Billable"&&billable.has(ordKey(r.TsCode,r.TsCodeDescription)));
     const nbMap = {};
     nbRows.forEach(r=>{ const k=r.TsCodeDescription||"Onbekend"; if(!nbMap[k]) nbMap[k]=0; nbMap[k]+=parseHours(r.ActualHours); });
-
-    // Flags
     const flags = [];
     if(notClosed.length>0) flags.push("NOT_CLOSED");
     if(missing.length>0) flags.push(isContractor?"OPEN_DAYS_CONTRACTOR":"OPEN_DAYS");
@@ -224,15 +227,12 @@ function analyze(rows, consultants, projecten) {
     if(holWorked.length>0) flags.push("HOLIDAY_WORKED");
     if(weekendWorked.length>0) flags.push("WEEKEND_WORKED");
     if(Object.keys(nbMap).length>0) flags.push("NB_ON_PROJECT");
-
-    // Status — DAILY_VARIATION alleen telt niet als probleem
     const seriousFlags = flags.filter(f => f !== "DAILY_VARIATION" && f !== "WEEKEND_WORKED" && f !== "HOLIDAY_WORKED");
     let status="compleet";
     if(notClosed.length>0) status="niet-afgesloten";
     else if(missing.length>0&&isContractor) status="contractor";
     else if(missing.length>0) status="probleem";
     else if(seriousFlags.length>0) status="aandacht";
-
     results.push({employee:emp,config:cfg,total,exp,status,flags,missing,notClosed,partial,over,holWorked,weekendWorked,nbMap,att:flags.length,isContractor});
   }
   return {results,workDays,ordsZonderPM,month,year};
@@ -309,129 +309,11 @@ const CONSULTANTS=[
 ];
 
 const PROJECTEN=[
-  // Actieve projecten
-  {ord:"ORD07000",pm:"Erik Michiels",type:"actief"},
-  {ord:"ORD10922",pm:"Tom Vrolix",type:"actief"},
-  {ord:"ORD12482",pm:"Alexander Adriaensen",type:"actief"},
-  {ord:"ORD13820",pm:"Tom Vrolix",type:"actief"},
-  {ord:"ORD16505",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD16820",pm:"Erik Michiels",type:"actief"},
-  {ord:"ORD16886",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD16943",pm:"Pieter Beckers",type:"actief"},
-  {ord:"ORD20933",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD24613",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD25011",pm:"Alexander Adriaensen",type:"actief"},
-  {ord:"ORD25809",pm:"Alexander Adriaensen",type:"actief"},
-  {ord:"ORD26026",pm:"Alexander Adriaensen",type:"actief"},
-  {ord:"ORD26157",pm:"Sandy Peeters",type:"actief"},
-  {ord:"ORD26891",pm:"Pieter Beckers",type:"actief"},
-  {ord:"ORD27016",pm:"Karl Steinhauer",type:"actief"},
-  {ord:"ORD27166",pm:"Sandy Peeters",type:"actief"},
-  {ord:"ORD27211",pm:"Sandy Peeters",type:"actief"},
-  {ord:"ORD27224",pm:"Sandy Peeters",type:"actief"},
-  {ord:"ORD27301",pm:"Sandy Peeters",type:"actief"},
-  {ord:"ORD06470",pm:"Erik Michiels",type:"actief"},
-  {ord:"ORD10063",pm:"Erik Michiels",type:"actief"},
-  {ord:"ORD10457",pm:"Erik Michiels",type:"actief"},
-  {ord:"ORD13926",pm:"Alexander Adriaensen",type:"actief"},
-  {ord:"ORD14135",pm:"Alexander Adriaensen",type:"actief"},
-  {ord:"ORD14137",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD14611",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD17446",pm:"Tom Vrolix",type:"actief"},
-  {ord:"ORD18196",pm:"Tom Vrolix",type:"actief"},
-  {ord:"ORD18328",pm:"Pieter Beckers",type:"actief"},
-  {ord:"ORD19525",pm:"Alexander Adriaensen",type:"actief"},
-  {ord:"ORD19791",pm:"Sandy Peeters",type:"actief"},
-  {ord:"ORD19819",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD23253",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD23905",pm:"Erik Michiels",type:"actief"},
-  {ord:"ORD26027",pm:"Alexander Adriaensen",type:"actief"},
-  {ord:"ORD27430",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD27535",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD10267",pm:"Wim Pierson",type:"actief"},
-  {ord:"ORD12310",pm:"Wim Pierson",type:"actief"},
-  {ord:"ORD13525",pm:"Wim Pierson",type:"actief"},
-  {ord:"ORD16503",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD18681",pm:"Alexander Adriaensen",type:"actief"},
-  {ord:"ORD19548",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD19552",pm:"Alexander Adriaensen",type:"actief"},
-  {ord:"ORD19557",pm:"Erik Michiels",type:"actief"},
-  {ord:"ORD19558",pm:"Alexander Adriaensen",type:"actief"},
-  {ord:"ORD19559",pm:"Alexander Adriaensen",type:"actief"},
-  {ord:"ORD19560",pm:"Tom Vrolix",type:"actief"},
-  {ord:"ORD19562",pm:"Tom Vrolix",type:"actief"},
-  {ord:"ORD19563",pm:"Tom Vrolix",type:"actief"},
-  {ord:"ORD19567",pm:"Sandy Peeters",type:"actief"},
-  {ord:"ORD19818",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD23254",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD24274",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD24275",pm:"Erik Michiels",type:"actief"},
-  {ord:"ORD24511",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD24584",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD24612",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD24616",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD24619",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD24622",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD24626",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD25219",pm:"Erik Michiels",type:"actief"},
-  {ord:"ORD25748",pm:"Erik Michiels",type:"actief"},
-  {ord:"ORD25781",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD26033",pm:"Alexander Adriaensen",type:"actief"},
-  {ord:"ORD26082",pm:"Nathalie De Martin",type:"actief"},
-  {ord:"ORD26343",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD26351",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD26750",pm:"Tom Bauwens",type:"actief"},
-  {ord:"ORD26999",pm:"Sandy Peeters",type:"actief"},
-  {ord:"ORD27063",pm:"Tom Bauwens",type:"actief"},
-  {ord:"ORD27138",pm:"Alexander Adriaensen",type:"actief"},
-  {ord:"ORD27165",pm:"Sandy Peeters",type:"actief"},
-  {ord:"ORD27210",pm:"Sandy Peeters",type:"actief"},
-  {ord:"ORD27300",pm:"Sandy Peeters",type:"actief"},
-  {ord:"ORD15059",pm:"Tom Bauwens",type:"actief"},
-  {ord:"ORD15184",pm:"Jordy Janssens",type:"actief"},
-  {ord:"ORD20110",pm:"Tom Bauwens",type:"actief"},
-  {ord:"ORD26156",pm:"Sandy Peeters",type:"actief"},
-  {ord:"ORD07466",pm:"Tom Bauwens",type:"actief"},
-  // Detacheringen
-  {ord:"ORD08848",pm:null,type:"detachering"},
-  {ord:"ORD09574",pm:null,type:"detachering"},
-  {ord:"ORD14442",pm:null,type:"detachering"},
-  {ord:"ORD14543",pm:null,type:"detachering"},
-  {ord:"ORD17126",pm:null,type:"detachering"},
-  {ord:"ORD20836",pm:null,type:"detachering"},
-  {ord:"ORD21434",pm:null,type:"detachering"},
-  {ord:"ORD23810",pm:null,type:"detachering"},
-  {ord:"ORD25048",pm:null,type:"detachering"},
-  {ord:"ORD26150",pm:null,type:"detachering"},
-  {ord:"ORD26705",pm:null,type:"detachering"},
-  {ord:"ORD27321",pm:null,type:"detachering"},
-  // Intern
-  {ord:"ORD05716",pm:null,type:"intern"},
-  {ord:"ORD07213",pm:null,type:"intern"},
-  {ord:"ORD07424",pm:null,type:"intern"},
-  {ord:"ORD08557",pm:null,type:"intern"},
-  {ord:"ORD09403",pm:null,type:"intern"},
-  {ord:"ORD09486",pm:null,type:"intern"},
-  {ord:"ORD09597",pm:null,type:"intern"},
-  {ord:"ORD10392",pm:null,type:"intern"},
-  {ord:"ORD10450",pm:null,type:"intern"},
-  {ord:"ORD10763",pm:null,type:"intern"},
-  {ord:"ORD11441",pm:null,type:"intern"},
-  {ord:"ORD11590",pm:null,type:"intern"},
-  {ord:"ORD12374",pm:null,type:"intern"},
-  {ord:"ORD12967",pm:null,type:"intern"},
-  {ord:"ORD13124",pm:null,type:"intern"},
-  {ord:"ORD13302",pm:null,type:"intern"},
-  {ord:"ORD16768",pm:null,type:"intern"},
-  {ord:"ORD16769",pm:null,type:"intern"},
-  {ord:"ORD19877",pm:null,type:"intern"},
-  {ord:"ORD20286",pm:null,type:"intern"},
-  {ord:"ORD23692",pm:null,type:"intern"},
-  {ord:"ORD25738",pm:null,type:"intern"},
-  {ord:"ORD25913",pm:null,type:"intern"},
-  {ord:"ORD25945",pm:null,type:"intern"},
+  {ord:"ORD07000",pm:"Erik Michiels",type:"actief"},{ord:"ORD10922",pm:"Tom Vrolix",type:"actief"},{ord:"ORD12482",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD13820",pm:"Tom Vrolix",type:"actief"},{ord:"ORD16505",pm:"Jordy Janssens",type:"actief"},{ord:"ORD16820",pm:"Erik Michiels",type:"actief"},{ord:"ORD16886",pm:"Jordy Janssens",type:"actief"},{ord:"ORD16943",pm:"Pieter Beckers",type:"actief"},{ord:"ORD20933",pm:"Jordy Janssens",type:"actief"},{ord:"ORD24613",pm:"Jordy Janssens",type:"actief"},{ord:"ORD25011",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD25809",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD26026",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD26157",pm:"Sandy Peeters",type:"actief"},{ord:"ORD26891",pm:"Pieter Beckers",type:"actief"},{ord:"ORD27016",pm:"Karl Steinhauer",type:"actief"},{ord:"ORD27166",pm:"Sandy Peeters",type:"actief"},{ord:"ORD27211",pm:"Sandy Peeters",type:"actief"},{ord:"ORD27224",pm:"Sandy Peeters",type:"actief"},{ord:"ORD27301",pm:"Sandy Peeters",type:"actief"},{ord:"ORD06470",pm:"Erik Michiels",type:"actief"},{ord:"ORD10063",pm:"Erik Michiels",type:"actief"},{ord:"ORD10457",pm:"Erik Michiels",type:"actief"},{ord:"ORD13926",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD14135",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD14137",pm:"Jordy Janssens",type:"actief"},{ord:"ORD14611",pm:"Jordy Janssens",type:"actief"},{ord:"ORD17446",pm:"Tom Vrolix",type:"actief"},{ord:"ORD18196",pm:"Tom Vrolix",type:"actief"},{ord:"ORD18328",pm:"Pieter Beckers",type:"actief"},{ord:"ORD19525",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD19791",pm:"Sandy Peeters",type:"actief"},{ord:"ORD19819",pm:"Jordy Janssens",type:"actief"},{ord:"ORD23253",pm:"Jordy Janssens",type:"actief"},{ord:"ORD23905",pm:"Erik Michiels",type:"actief"},{ord:"ORD26027",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD27430",pm:"Jordy Janssens",type:"actief"},{ord:"ORD27535",pm:"Jordy Janssens",type:"actief"},{ord:"ORD10267",pm:"Wim Pierson",type:"actief"},{ord:"ORD12310",pm:"Wim Pierson",type:"actief"},{ord:"ORD13525",pm:"Wim Pierson",type:"actief"},{ord:"ORD16503",pm:"Jordy Janssens",type:"actief"},{ord:"ORD18681",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD19548",pm:"Jordy Janssens",type:"actief"},{ord:"ORD19552",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD19557",pm:"Erik Michiels",type:"actief"},{ord:"ORD19558",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD19559",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD19560",pm:"Tom Vrolix",type:"actief"},{ord:"ORD19562",pm:"Tom Vrolix",type:"actief"},{ord:"ORD19563",pm:"Tom Vrolix",type:"actief"},{ord:"ORD19567",pm:"Sandy Peeters",type:"actief"},{ord:"ORD19818",pm:"Jordy Janssens",type:"actief"},{ord:"ORD23254",pm:"Jordy Janssens",type:"actief"},{ord:"ORD24274",pm:"Jordy Janssens",type:"actief"},{ord:"ORD24275",pm:"Erik Michiels",type:"actief"},{ord:"ORD24511",pm:"Jordy Janssens",type:"actief"},{ord:"ORD24584",pm:"Jordy Janssens",type:"actief"},{ord:"ORD24612",pm:"Jordy Janssens",type:"actief"},{ord:"ORD24616",pm:"Jordy Janssens",type:"actief"},{ord:"ORD24619",pm:"Jordy Janssens",type:"actief"},{ord:"ORD24622",pm:"Jordy Janssens",type:"actief"},{ord:"ORD24626",pm:"Jordy Janssens",type:"actief"},{ord:"ORD25219",pm:"Erik Michiels",type:"actief"},{ord:"ORD25748",pm:"Erik Michiels",type:"actief"},{ord:"ORD25781",pm:"Jordy Janssens",type:"actief"},{ord:"ORD26033",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD26082",pm:"Nathalie De Martin",type:"actief"},{ord:"ORD26343",pm:"Jordy Janssens",type:"actief"},{ord:"ORD26351",pm:"Jordy Janssens",type:"actief"},{ord:"ORD26750",pm:"Tom Bauwens",type:"actief"},{ord:"ORD26999",pm:"Sandy Peeters",type:"actief"},{ord:"ORD27063",pm:"Tom Bauwens",type:"actief"},{ord:"ORD27138",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD27165",pm:"Sandy Peeters",type:"actief"},{ord:"ORD27210",pm:"Sandy Peeters",type:"actief"},{ord:"ORD27300",pm:"Sandy Peeters",type:"actief"},{ord:"ORD15059",pm:"Tom Bauwens",type:"actief"},{ord:"ORD15184",pm:"Jordy Janssens",type:"actief"},{ord:"ORD20110",pm:"Tom Bauwens",type:"actief"},{ord:"ORD26156",pm:"Sandy Peeters",type:"actief"},{ord:"ORD07466",pm:"Tom Bauwens",type:"actief"},
+  {ord:"ORD08848",pm:null,type:"detachering"},{ord:"ORD09574",pm:null,type:"detachering"},{ord:"ORD14442",pm:null,type:"detachering"},{ord:"ORD14543",pm:null,type:"detachering"},{ord:"ORD17126",pm:null,type:"detachering"},{ord:"ORD20836",pm:null,type:"detachering"},{ord:"ORD21434",pm:null,type:"detachering"},{ord:"ORD23810",pm:null,type:"detachering"},{ord:"ORD25048",pm:null,type:"detachering"},{ord:"ORD26150",pm:null,type:"detachering"},{ord:"ORD26705",pm:null,type:"detachering"},{ord:"ORD27321",pm:null,type:"detachering"},
+  {ord:"ORD05716",pm:null,type:"intern"},{ord:"ORD07213",pm:null,type:"intern"},{ord:"ORD07424",pm:null,type:"intern"},{ord:"ORD08557",pm:null,type:"intern"},{ord:"ORD09403",pm:null,type:"intern"},{ord:"ORD09486",pm:null,type:"intern"},{ord:"ORD09597",pm:null,type:"intern"},{ord:"ORD10392",pm:null,type:"intern"},{ord:"ORD10450",pm:null,type:"intern"},{ord:"ORD10763",pm:null,type:"intern"},{ord:"ORD11441",pm:null,type:"intern"},{ord:"ORD11590",pm:null,type:"intern"},{ord:"ORD12374",pm:null,type:"intern"},{ord:"ORD12967",pm:null,type:"intern"},{ord:"ORD13124",pm:null,type:"intern"},{ord:"ORD13302",pm:null,type:"intern"},{ord:"ORD16768",pm:null,type:"intern"},{ord:"ORD16769",pm:null,type:"intern"},{ord:"ORD19877",pm:null,type:"intern"},{ord:"ORD20286",pm:null,type:"intern"},{ord:"ORD23692",pm:null,type:"intern"},{ord:"ORD25738",pm:null,type:"intern"},{ord:"ORD25913",pm:null,type:"intern"},{ord:"ORD25945",pm:null,type:"intern"},
   {ord:"ORD27624",pm:"Pieter Beckers",type:"actief"},
-]
+];
 
 function Modal({r, onClose}) {
   useEffect(() => {
@@ -451,10 +333,7 @@ function Modal({r, onClose}) {
     <div className="modal-overlay" onClick={e=>e.target.className==="modal-overlay"&&onClose()}>
       <div className="modal">
         <div className="modal-head">
-          <div>
-            <h2>{r.config?.naam||r.employee}</h2>
-            <div className="sub">{r.config?.team||"—"} · {r.config?.rol||"?"}{r.isContractor?" · contractor":""}</div>
-          </div>
+          <div><h2>{r.config?.naam||r.employee}</h2><div className="sub">{r.config?.team||"—"} · {r.config?.rol||"?"}{r.isContractor?" · contractor":""}</div></div>
           <button className="close" onClick={onClose}>×</button>
         </div>
         <div className="modal-stats">
@@ -471,67 +350,114 @@ function Modal({r, onClose}) {
   );
 }
 
+function RoleSelect({ onSelect }) {
+  const [selected, setSelected] = useState(null);
+  return (
+    <div className="role-wrap">
+      <p className="role-label">Toegang</p>
+      <h2 className="role-title">Wie ben jij?</h2>
+      <p className="role-sub">Selecteer je profiel om verder te gaan</p>
+      <div className="role-grid">
+        {BEHEERDERS.map(b => (
+          <div key={b.naam} className={`role-card${selected?.naam===b.naam?" selected":""}`} onClick={() => setSelected(b)}>
+            <div className="role-avatar">{b.initials}</div>
+            <div className="role-naam">{b.naam}</div>
+            <div className="role-functie">{b.functie}</div>
+          </div>
+        ))}
+      </div>
+      {selected ? (
+        <button className="btn btn-primary" style={{marginTop:20}} onClick={() => onSelect(selected)}>
+          Verdergaan als {selected.naam.split(" ")[0]} →
+        </button>
+      ) : (
+        <p className="role-hint">Klik op je naam om verder te gaan</p>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
-  const [step,setStep]=useState("upload");
-  const [csvData,setCsvData]=useState(null);
-  const [fileName,setFileName]=useState("");
-  const [analysis,setAnalysis]=useState(null);
-  const [tab,setTab]=useState("alle");
-  const [modal,setModal]=useState(null);
-  const [drag,setDrag]=useState(false);
+  const [step, setStep] = useState("loading");
+  const [currentUser, setCurrentUser] = useState(null);
+  const [csvData, setCsvData] = useState(null);
+  const [fileName, setFileName] = useState("");
+  const [analysis, setAnalysis] = useState(null);
+  const [tab, setTab] = useState("alle");
+  const [modal, setModal] = useState(null);
+  const [drag, setDrag] = useState(false);
 
-  const handleFile=useCallback(file=>{
-    if(!file) return;
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const result = await window.storage.get(STORAGE_KEY);
+        if (result?.value) {
+          setCurrentUser(JSON.parse(result.value));
+          setStep("upload");
+        } else {
+          setStep("select");
+        }
+      } catch {
+        setStep("select");
+      }
+    }
+    loadUser();
+  }, []);
+
+  const handleSelect = useCallback(async (user) => {
+    try { await window.storage.set(STORAGE_KEY, JSON.stringify(user)); } catch {}
+    setCurrentUser(user);
+    setStep("upload");
+  }, []);
+
+  const handleSwitch = useCallback(async () => {
+    try { await window.storage.delete(STORAGE_KEY); } catch {}
+    setCurrentUser(null); setCsvData(null); setAnalysis(null); setStep("select");
+  }, []);
+
+  const handleFile = useCallback(file => {
+    if (!file) return;
     setFileName(file.name);
-    const r=new FileReader();
-    r.onload=e=>setCsvData(e.target.result);
-    r.readAsText(file,"utf-8");
-  },[]);
+    const r = new FileReader();
+    r.onload = e => setCsvData(e.target.result);
+    r.readAsText(file, "utf-8");
+  }, []);
 
-  const run=useCallback(()=>{
-    if(!csvData) return;
+  const run = useCallback(() => {
+    if (!csvData) return;
     try {
       const rows = parseCSV(csvData);
       const result = analyze(rows, CONSULTANTS, PROJECTEN);
-      setAnalysis(result);
-      setStep("results");
-    } catch(e) {
-      console.error("Analyse fout:", e);
-      alert("Fout bij analyse: " + e.message);
-    }
-  },[csvData]);
+      setAnalysis(result); setStep("results");
+    } catch(e) { alert("Fout bij analyse: " + e.message); }
+  }, [csvData]);
 
-  const counts=useMemo(()=>{
-    if(!analysis) return {};
-    const c={alle:0,probleem:0,"niet-afgesloten":0,contractor:0,compleet:0,aandacht:0};
-    analysis.results.forEach(r=>{c.alle++;c[r.status]=(c[r.status]||0)+1;});
+  const counts = useMemo(() => {
+    if (!analysis) return {};
+    const c = {alle:0,probleem:0,"niet-afgesloten":0,contractor:0,compleet:0,aandacht:0};
+    analysis.results.forEach(r => { c.alle++; c[r.status]=(c[r.status]||0)+1; });
     return c;
-  },[analysis]);
+  }, [analysis]);
 
-  const filtered=useMemo(()=>{
-    if(!analysis) return [];
+  const filtered = useMemo(() => {
+    if (!analysis) return [];
     const tabFilter = tab==="compleet" ? r => r.status==="compleet"||r.status==="aandacht" : r => r.status===tab;
     function sortKey(r) {
-      const hasNB = r.flags.includes("NB_ON_PROJECT");
-      const hasOver = r.flags.includes("OVER_HOURS");
-      const hasWeekend = r.flags.includes("WEEKEND_WORKED");
-      const hasHoliday = r.flags.includes("HOLIDAY_WORKED");
-      const extraBadges = hasNB || hasOver || hasWeekend || hasHoliday;
+      const extraBadges = r.flags.includes("NB_ON_PROJECT")||r.flags.includes("OVER_HOURS")||r.flags.includes("WEEKEND_WORKED")||r.flags.includes("HOLIDAY_WORKED");
       const isCompleet = r.status==="compleet"||r.status==="aandacht";
       if (r.status==="niet-afgesloten") return 0;
       if (r.status==="probleem" && extraBadges) return 1;
       if (r.status==="probleem") return 2;
-      if (isCompleet && hasNB) return 3;
+      if (isCompleet && r.flags.includes("NB_ON_PROJECT")) return 3;
       if (r.status==="contractor") return 4;
       if (isCompleet && extraBadges) return 5;
       if (r.status==="aandacht") return 6;
       return 7;
     }
-    return (tab==="alle"?analysis.results:analysis.results.filter(tabFilter))
-      .slice().sort((a,b)=>sortKey(a)-sortKey(b));
-  },[analysis,tab]);
+    return (tab==="alle" ? analysis.results : analysis.results.filter(tabFilter)).slice().sort((a,b)=>sortKey(a)-sortKey(b));
+  }, [analysis, tab]);
 
-  const TABS=[
+  const TABS = [
     {k:"alle",l:`Alle (${counts.alle||0})`},
     {k:"probleem",l:`Probleem (${(counts.probleem||0)+(counts["niet-afgesloten"]||0)})`},
     {k:"niet-afgesloten",l:`Niet afgesloten (${counts["niet-afgesloten"]||0})`},
@@ -539,15 +465,37 @@ export default function App() {
     {k:"compleet",l:`Compleet (${(counts.compleet||0)+(counts.aandacht||0)})`},
   ];
 
-  if(step==="upload") return (
+  const Topbar = () => (
+    <div className="topbar">
+      <span className="logo">PHPro</span>
+      <span className="page active">Timesheet Compliance</span>
+      <div className="topbar-spacer"/>
+      {currentUser && (
+        <div className="topbar-user">
+          <div className="avatar">{currentUser.initials}</div>
+          <span>{currentUser.naam.split(" ")[0]}</span>
+          <button className="switch-btn" onClick={handleSwitch}>Niet jij?</button>
+        </div>
+      )}
+    </div>
+  );
+
+  if (step === "loading") return (
+    <><style>{css}</style><div className="app"><Topbar/><div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"60vh",color:"var(--muted)",fontSize:13}}>Laden…</div></div></>
+  );
+
+  if (step === "select") return (
+    <><style>{css}</style><div className="app"><Topbar/><div className="main"><RoleSelect onSelect={handleSelect}/></div></div></>
+  );
+
+  if (step === "upload") return (
     <><style>{css}</style>
     <div className="app">
-      <div className="topbar"><span className="logo">PHPro</span><span className="page active">Timesheet Compliance</span></div>
+      <Topbar/>
       <div className="main">
         <div className="upload-wrap">
           <div className={`upload-card${drag?" drag":""}`}
-            onDragOver={e=>{e.preventDefault();setDrag(true);}}
-            onDragLeave={()=>setDrag(false)}
+            onDragOver={e=>{e.preventDefault();setDrag(true);}} onDragLeave={()=>setDrag(false)}
             onDrop={e=>{e.preventDefault();setDrag(false);handleFile(e.dataTransfer.files[0]);}}
             onClick={()=>document.getElementById("fi").click()}>
             <div className="upload-icon">📂</div>
@@ -567,7 +515,7 @@ export default function App() {
   return (
     <><style>{css}</style>
     <div className="app">
-      <div className="topbar"><span className="logo">PHPro</span><span className="page active">Timesheet Compliance</span></div>
+      <Topbar/>
       <div className="main">
         <div className="page-header">
           <div className="month-nav">
@@ -580,8 +528,7 @@ export default function App() {
         <div className="tabs">{TABS.map(t=><button key={t.k} className={`tab${tab===t.k?" active":""}`} onClick={()=>setTab(t.k)}>{t.l}</button>)}</div>
         <div className="table">
           <div className="table-header">
-            <span>Consultant</span><span>Totale uren</span><span>Voortgang</span>
-            <span>Ontbrekende dagen</span><span>Aandacht</span><span>Status</span>
+            <span>Consultant</span><span>Totale uren</span><span>Voortgang</span><span>Ontbrekende dagen</span><span>Aandacht</span><span>Status</span>
           </div>
           {filtered.length===0&&<div className="no-res">Geen resultaten</div>}
           {filtered.map(r=>{
@@ -592,10 +539,7 @@ export default function App() {
                 <div className="row-inner">
                   <div className="name-cell"><div className="name">{r.config?.naam||r.employee}</div><div className="sub">{r.config?.team||"—"}</div></div>
                   <div className="hours-cell">{r.total.toFixed(1)}/{r.exp}</div>
-                  <div className="progress-cell">
-                    <div className="progress-bar"><div className={`progress-fill pf-${fc}`} style={{width:`${pct}%`}}/></div>
-                    <span className="progress-pct">{pct}%</span>
-                  </div>
+                  <div className="progress-cell"><div className="progress-bar"><div className={`progress-fill pf-${fc}`} style={{width:`${pct}%`}}/></div><span className="progress-pct">{pct}%</span></div>
                   <div className={`missing-cell${r.missing.length>0?" bad":""}`}>{r.missing.length>0?`${r.missing.length}d`:"—"}</div>
                   <div className="att-cell">{r.att>0?<span className="att-count">🔔 {r.att}</span>:<span style={{color:"var(--muted)"}}>—</span>}</div>
                   <div style={{display:'flex',gap:'4px',flexWrap:'wrap',alignItems:'center'}}>
