@@ -1,6 +1,85 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 
-const RAW_BASE = "https://raw.githubusercontent.com/wimpierson/timesheet-checker/main/config";
+// Config ingebakken vanuit GitHub (wimpierson/timesheet-checker/config/) — geen fetch nodig
+const CONSULTANTS = [
+  {naam:"Alexander Adriaensen",tia_naam:"Adriaensen Alexander",team:"Team 2",rol:"PM",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Ken Andries",tia_naam:"Andries Ken",team:"Team 3",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Koen Appeltans",tia_naam:"Appeltans Koen",team:null,rol:"PO",taal:"nl",type:"medewerker",vrijgesteld:true},
+  {naam:"Tom Bauwens",tia_naam:"Bauwens Tom",team:null,rol:"PO",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Pieter Beckers",tia_naam:"Beckers Pieter",team:"Team 1",rol:"PM",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Kevin Bervoets",tia_naam:"Bervoets Kevin",team:"Team 5",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Tom Bevers",tia_naam:"Bevers Tom",team:"Consultants",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Art Boer",tia_naam:"Boer Art",team:"Team 3",rol:"DEV",taal:"nl",type:"contractor",vrijgesteld:true},
+  {naam:"Bart Bollen",tia_naam:"Bollen Bart",team:"Team 1",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Filippe Bortels",tia_naam:"Bortels Filippe",team:"Consultants",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Anke Brouwer",tia_naam:"Brouwer Anke",team:"Consultants",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Siebe De Celle",tia_naam:"De Celle Siebe",team:"Team 2",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Giovanni De Gruyter",tia_naam:"De Gruyter Giovanni",team:"Team 3",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Nathalie De Martin",tia_naam:"De Martin Nathalie",team:null,rol:"MP",taal:"nl",type:"medewerker",vrijgesteld:true},
+  {naam:"Paulien De Pauw",tia_naam:"De Pauw Paulien",team:null,rol:"PO",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Jo Dekelver",tia_naam:"Dekelver Jo",team:"Consultants",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Maxim Ganses",tia_naam:"Ganses Maxim",team:"Team 3",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Davy Goossens",tia_naam:"Goossens Davy",team:"Team 5",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Mirte Hamers",tia_naam:"Hamers Mirte",team:null,rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Glenn Janssens",tia_naam:"Janssens Glenn",team:"Team 5",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Jordy Janssens",tia_naam:"Janssens Jordy",team:"Team 3",rol:"PM",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Bona Kim",tia_naam:"Kim Bona",team:"Team 4",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Sandra Kotowska",tia_naam:"Kotowska Sandra",team:"Team 2",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Stijn Kuppens",tia_naam:"Kuppens Stijn",team:"Team 1",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Vicky Laurijssen",tia_naam:"Laurijssen Vicky",team:"Team 1",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Stef Liekens",tia_naam:"Liekens Stef",team:"Team 4",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Daniel Lozano",tia_naam:"Lozano Daniel",team:"Team 3",rol:"DEV",taal:"es",type:"medewerker",vrijgesteld:false},
+  {naam:"Alejandro Lozano Morales",tia_naam:"Lozano Morales Alejandro",team:"Team 3",rol:"DEV",taal:"es",type:"medewerker",vrijgesteld:false},
+  {naam:"Tymofii Maksymenko",tia_naam:"Maksymenko Tymofii",team:"Team 2",rol:"DEV",taal:"ua",type:"contractor",vrijgesteld:true},
+  {naam:"Laurent Meganck",tia_naam:"Meganck Laurent",team:"Consultants",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Erik Michiels",tia_naam:"Michiels Erik",team:"Team 5",rol:"PM",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Javier Miguel Sauco",tia_naam:"Miguel Sauco Javier",team:"Team 2",rol:"DEV",taal:"es",type:"medewerker",vrijgesteld:false},
+  {naam:"Christophe Neefs",tia_naam:"Neefs Christophe",team:"Consultants",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Mario Peeters",tia_naam:"Peeters Mario",team:null,rol:"PO",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Sandy Peeters",tia_naam:"Peeters Sandy",team:"Team 4",rol:"PM",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Wim Pierson",tia_naam:"Pierson Wim",team:null,rol:"MP",taal:"nl",type:"medewerker",vrijgesteld:true},
+  {naam:"Olga Povitukhina",tia_naam:"Povitukhina Olga",team:"Consultants",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Joke Puts",tia_naam:"Puts Joke",team:null,rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Kenny Rassin",tia_naam:"Rassin Kenny",team:null,rol:"MP",taal:"nl",type:"medewerker",vrijgesteld:true},
+  {naam:"Bart Reunes",tia_naam:"Reunes Bart",team:"Team 1",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Brent Robert",tia_naam:"Robert Brent",team:"Team 4",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Sven Roelandt",tia_naam:"Roelandt Sven",team:"Team 1",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Riansares Sels",tia_naam:"Sels Riansares",team:null,rol:"Sales",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Dmytro Shkoliar",tia_naam:"Shkoliar Dmytro",team:"Team 4",rol:"DEV",taal:"ua",type:"contractor",vrijgesteld:true},
+  {naam:"Jeroen Smolders",tia_naam:"Smolders Jeroen",team:null,rol:"MP",taal:"nl",type:"medewerker",vrijgesteld:true},
+  {naam:"Femke Steeman",tia_naam:"Steeman Femke",team:"Team 5",rol:"PO",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Karl Steinhauer",tia_naam:"Steinhauer Karl",team:null,rol:"PM",taal:"nl",type:"contractor",vrijgesteld:true},
+  {naam:"Dylan Teugels",tia_naam:"Teugels Dylan",team:"Team 2",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Rick Van Boxstael",tia_naam:"Van Boxstael Rick",team:"Consultants",rol:"PO",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Matse Van Horebeek",tia_naam:"Van Horebeek Matse",team:null,rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Dieter Van Stijvendael",tia_naam:"Van Stijvendael Dieter",team:null,rol:"PO",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Arne Van den Langenbergh",tia_naam:"Van den Langenbergh Arne",team:"Team 3",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Elwyn Van der Borght",tia_naam:"Van der Borght Elwyn",team:"Team 5",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Sarah Van der Perren",tia_naam:"Van der Perren Sarah",team:null,rol:"PO",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Bert Vandermeulen",tia_naam:"Vandermeulen Bert",team:null,rol:"Sales",taal:"nl",type:"medewerker",vrijgesteld:true},
+  {naam:"Jordy Vandewalle",tia_naam:"Vandewalle Jordy",team:null,rol:"PO",taal:"es",type:"medewerker",vrijgesteld:false},
+  {naam:"Shauni Vansteyvoort",tia_naam:"Vansteyvoort Shauni",team:null,rol:"PO",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Bert Verbessem",tia_naam:"Verbessem Bert",team:null,rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Raul Verdugo Lorenzo",tia_naam:"Verdugo Lorenzo Raul",team:"Team 2",rol:"DEV",taal:"es",type:"medewerker",vrijgesteld:false},
+  {naam:"Hans Vereyken",tia_naam:"Vereyken Hans",team:"Team 3",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Toon Verwerft",tia_naam:"Verwerft Toon",team:"Team 5",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Sarah Vrielinck",tia_naam:"Vrielinck Sarah",team:"Team 4",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Tom Vrolix",tia_naam:"Vrolix Tom",team:null,rol:"PM",taal:"nl",type:"medewerker",vrijgesteld:false},
+  {naam:"Sergii Zheleznytskyi",tia_naam:"Zheleznytskyi Sergii",team:"Team 2",rol:"DEV",taal:"ua",type:"contractor",vrijgesteld:true},
+];
+
+const PROJECTEN = [
+  {ord:"ORD07000",pm:"Erik Michiels"},{ord:"ORD10922",pm:"Tom Vrolix"},{ord:"ORD12482",pm:"Alexander Adriaensen"},{ord:"ORD13820",pm:"Tom Vrolix"},{ord:"ORD16505",pm:"Jordy Janssens"},{ord:"ORD16820",pm:"Erik Michiels"},{ord:"ORD16886",pm:"Jordy Janssens"},{ord:"ORD16943",pm:"Pieter Beckers"},{ord:"ORD20933",pm:"Jordy Janssens"},{ord:"ORD24613",pm:"Jordy Janssens"},{ord:"ORD25011",pm:"Alexander Adriaensen"},{ord:"ORD25809",pm:"Alexander Adriaensen"},{ord:"ORD26026",pm:"Alexander Adriaensen"},{ord:"ORD26157",pm:"Sandy Peeters"},{ord:"ORD26891",pm:"Pieter Beckers"},{ord:"ORD27016",pm:"Karl Steinhauer"},{ord:"ORD27166",pm:"Sandy Peeters"},{ord:"ORD27211",pm:"Sandy Peeters"},{ord:"ORD27224",pm:"Sandy Peeters"},{ord:"ORD27301",pm:"Sandy Peeters"},{ord:"ORD06470",pm:"Erik Michiels"},{ord:"ORD08848",pm:null},{ord:"ORD09574",pm:null},{ord:"ORD10063",pm:"Erik Michiels"},{ord:"ORD10457",pm:"Erik Michiels"},{ord:"ORD13926",pm:"Alexander Adriaensen"},{ord:"ORD14135",pm:"Alexander Adriaensen"},{ord:"ORD14137",pm:"Jordy Janssens"},{ord:"ORD14611",pm:"Jordy Janssens"},{ord:"ORD17126",pm:null},{ord:"ORD17446",pm:"Tom Vrolix"},{ord:"ORD18196",pm:"Tom Vrolix"},{ord:"ORD18328",pm:"Pieter Beckers"},{ord:"ORD27624",pm:"Pieter Beckers"},{ord:"ORD19525",pm:"Alexander Adriaensen"},{ord:"ORD19791",pm:"Sandy Peeters"},{ord:"ORD19819",pm:"Jordy Janssens"},{ord:"ORD20836",pm:null},{ord:"ORD21434",pm:null},{ord:"ORD23253",pm:"Jordy Janssens"},{ord:"ORD23905",pm:"Erik Michiels"},{ord:"ORD26027",pm:"Alexander Adriaensen"},{ord:"ORD27430",pm:"Jordy Janssens"},{ord:"ORD27535",pm:"Jordy Janssens"},{ord:"ORD10267",pm:"Wim Pierson"},{ord:"ORD12310",pm:"Wim Pierson"},{ord:"ORD13525",pm:"Wim Pierson"},{ord:"ORD05716",pm:null},{ord:"ORD07213",pm:null},{ord:"ORD07424",pm:null},{ord:"ORD07466",pm:"Tom Bauwens"},{ord:"ORD08557",pm:null},{ord:"ORD09403",pm:null},{ord:"ORD09486",pm:null},{ord:"ORD09597",pm:null},{ord:"ORD10392",pm:null},{ord:"ORD10450",pm:null},{ord:"ORD10763",pm:null},{ord:"ORD11441",pm:null},{ord:"ORD11590",pm:null},{ord:"ORD12374",pm:null},{ord:"ORD12967",pm:null},{ord:"ORD13124",pm:null},{ord:"ORD13302",pm:null},{ord:"ORD15059",pm:"Tom Bauwens"},{ord:"ORD15184",pm:"Jordy Janssens"},{ord:"ORD16503",pm:"Jordy Janssens"},{ord:"ORD16768",pm:null},{ord:"ORD16769",pm:null},{ord:"ORD18681",pm:"Alexander Adriaensen"},{ord:"ORD19548",pm:"Jordy Janssens"},{ord:"ORD19552",pm:"Alexander Adriaensen"},{ord:"ORD19557",pm:"Erik Michiels"},{ord:"ORD19558",pm:"Alexander Adriaensen"},{ord:"ORD19559",pm:"Alexander Adriaensen"},{ord:"ORD19560",pm:"Tom Vrolix"},{ord:"ORD19562",pm:"Tom Vrolix"},{ord:"ORD19563",pm:"Tom Vrolix"},{ord:"ORD19567",pm:"Sandy Peeters"},{ord:"ORD19818",pm:"Jordy Janssens"},{ord:"ORD19877",pm:null},{ord:"ORD20110",pm:"Tom Bauwens"},{ord:"ORD20286",pm:null},{ord:"ORD23254",pm:"Jordy Janssens"},{ord:"ORD23692",pm:null},{ord:"ORD23810",pm:null},{ord:"ORD24274",pm:"Jordy Janssens"},{ord:"ORD24275",pm:"Erik Michiels"},{ord:"ORD24511",pm:"Jordy Janssens"},{ord:"ORD24584",pm:"Jordy Janssens"},{ord:"ORD24612",pm:"Jordy Janssens"},{ord:"ORD24616",pm:"Jordy Janssens"},{ord:"ORD24619",pm:"Jordy Janssens"},{ord:"ORD24622",pm:"Jordy Janssens"},{ord:"ORD24626",pm:"Jordy Janssens"},{ord:"ORD25048",pm:null},{ord:"ORD25219",pm:"Erik Michiels"},{ord:"ORD25738",pm:null},{ord:"ORD25748",pm:"Erik Michiels"},{ord:"ORD25781",pm:"Jordy Janssens"},{ord:"ORD25913",pm:null},{ord:"ORD25945",pm:null},{ord:"ORD26033",pm:"Alexander Adriaensen"},{ord:"ORD26082",pm:"Nathalie De Martin"},{ord:"ORD26150",pm:null},{ord:"ORD26156",pm:"Sandy Peeters"},{ord:"ORD26343",pm:"Jordy Janssens"},{ord:"ORD26351",pm:"Jordy Janssens"},{ord:"ORD26705",pm:null},{ord:"ORD26750",pm:"Tom Bauwens"},{ord:"ORD26999",pm:"Sandy Peeters"},{ord:"ORD27063",pm:"Tom Bauwens"},{ord:"ORD27138",pm:"Alexander Adriaensen"},{ord:"ORD27165",pm:"Sandy Peeters"},{ord:"ORD27210",pm:"Sandy Peeters"},{ord:"ORD27300",pm:"Sandy Peeters"},{ord:"ORD27321",pm:null},
+];
+
+const BEHEERDERS = [
+  {naam:"Wim Pierson",initials:"WP",functie:"Managing Partner",tia_naam:"Pierson Wim"},
+  {naam:"Nathalie De Martin",initials:"ND",functie:"Managing Partner",tia_naam:"De Martin Nathalie"},
+  {naam:"Jeroen Smolders",initials:"JS",functie:"Managing Partner",tia_naam:"Smolders Jeroen"},
+  {naam:"Kenny Rassin",initials:"KR",functie:"Managing Partner",tia_naam:"Rassin Kenny"},
+];
+
+const STORAGE_KEY = "selected_user";
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
@@ -25,8 +104,6 @@ const css = `
   .topbar-user .avatar { width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: white; }
   .topbar-user .switch-btn { background: none; border: none; color: rgba(255,255,255,0.4); font-size: 11px; cursor: pointer; font-family: inherit; padding: 0; text-decoration: underline; }
   .topbar-user .switch-btn:hover { color: rgba(255,255,255,0.75); }
-  .config-badge { font-size: 10px; color: rgba(255,255,255,0.35); font-family: var(--mono); }
-  .config-badge.live { color: rgba(100,220,140,0.7); }
   .main { padding: 28px; }
   .center-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; }
   .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
@@ -98,100 +175,6 @@ const css = `
   .role-functie { font-size: 11px; color: var(--muted); margin-top: 2px; }
 `;
 
-const STORAGE_KEY = "selected_user";
-
-const CONSULTANTS_FALLBACK = [
-  {naam:"Alexander Adriaensen",tia_naam:"Adriaensen Alexander",team:"Team 2",rol:"PM",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Ken Andries",tia_naam:"Andries Ken",team:"Team 3",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Koen Appeltans",tia_naam:"Appeltans Koen",team:null,rol:"PO",taal:"nl",type:"medewerker",vrijgesteld:true},
-  {naam:"Tom Bauwens",tia_naam:"Bauwens Tom",team:null,rol:"PO",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Pieter Beckers",tia_naam:"Beckers Pieter",team:"Team 1",rol:"PM",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Kevin Bervoets",tia_naam:"Bervoets Kevin",team:"Team 5",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Tom Bevers",tia_naam:"Bevers Tom",team:"Consultants",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Art Boer",tia_naam:"Boer Art",team:"Team 3",rol:"DEV",taal:"nl",type:"contractor",vrijgesteld:true},
-  {naam:"Bart Bollen",tia_naam:"Bollen Bart",team:"Team 1",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Filippe Bortels",tia_naam:"Bortels Filippe",team:"Consultants",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Anke Brouwer",tia_naam:"Brouwer Anke",team:"Consultants",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Siebe De Celle",tia_naam:"De Celle Siebe",team:"Team 2",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Giovanni De Gruyter",tia_naam:"De Gruyter Giovanni",team:"Team 3",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Nathalie De Martin",tia_naam:"De Martin Nathalie",team:null,rol:"MP",taal:"nl",type:"medewerker",vrijgesteld:true},
-  {naam:"Paulien De Pauw",tia_naam:"De Pauw Paulien",team:null,rol:"PO",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Jo Dekelver",tia_naam:"Dekelver Jo",team:"Consultants",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Maxim Ganses",tia_naam:"Ganses Maxim",team:"Team 3",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Davy Goossens",tia_naam:"Goossens Davy",team:"Team 5",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Mirte Hamers",tia_naam:"Hamers Mirte",team:null,rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Glenn Janssens",tia_naam:"Janssens Glenn",team:"Team 5",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Jordy Janssens",tia_naam:"Janssens Jordy",team:"Team 3",rol:"PM",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Bona Kim",tia_naam:"Kim Bona",team:"Team 4",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Sandra Kotowska",tia_naam:"Kotowska Sandra",team:"Team 2",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Stijn Kuppens",tia_naam:"Kuppens Stijn",team:"Team 1",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Vicky Laurijssen",tia_naam:"Laurijssen Vicky",team:"Team 1",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Stef Liekens",tia_naam:"Liekens Stef",team:"Team 4",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Daniel Lozano",tia_naam:"Lozano Daniel",team:"Team 3",rol:"DEV",taal:"es",type:"medewerker",vrijgesteld:false},
-  {naam:"Alejandro Lozano Morales",tia_naam:"Lozano Morales Alejandro",team:"Team 3",rol:"DEV",taal:"es",type:"medewerker",vrijgesteld:false},
-  {naam:"Tymofii Maksymenko",tia_naam:"Maksymenko Tymofii",team:"Team 2",rol:"DEV",taal:"ua",type:"contractor",vrijgesteld:true},
-  {naam:"Laurent Meganck",tia_naam:"Meganck Laurent",team:"Consultants",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Erik Michiels",tia_naam:"Michiels Erik",team:"Team 5",rol:"PM",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Javier Miguel Sauco",tia_naam:"Miguel Sauco Javier",team:"Team 2",rol:"DEV",taal:"es",type:"medewerker",vrijgesteld:false},
-  {naam:"Christophe Neefs",tia_naam:"Neefs Christophe",team:"Consultants",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Mario Peeters",tia_naam:"Peeters Mario",team:null,rol:"PO",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Sandy Peeters",tia_naam:"Peeters Sandy",team:"Team 4",rol:"PM",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Wim Pierson",tia_naam:"Pierson Wim",team:null,rol:"MP",taal:"nl",type:"medewerker",vrijgesteld:true},
-  {naam:"Olga Povitukhina",tia_naam:"Povitukhina Olga",team:"Consultants",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Joke Puts",tia_naam:"Puts Joke",team:null,rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Kenny Rassin",tia_naam:"Rassin Kenny",team:null,rol:"MP",taal:"nl",type:"medewerker",vrijgesteld:true},
-  {naam:"Bart Reunes",tia_naam:"Reunes Bart",team:"Team 1",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Brent Robert",tia_naam:"Robert Brent",team:"Team 4",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Sven Roelandt",tia_naam:"Roelandt Sven",team:"Team 1",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Riansares Sels",tia_naam:"Sels Riansares",team:null,rol:"Sales",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Dmytro Shkoliar",tia_naam:"Shkoliar Dmytro",team:"Team 4",rol:"DEV",taal:"ua",type:"contractor",vrijgesteld:true},
-  {naam:"Jeroen Smolders",tia_naam:"Smolders Jeroen",team:null,rol:"MP",taal:"nl",type:"medewerker",vrijgesteld:true},
-  {naam:"Femke Steeman",tia_naam:"Steeman Femke",team:"Team 5",rol:"PO",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Karl Steinhauer",tia_naam:"Steinhauer Karl",team:null,rol:"PM",taal:"nl",type:"contractor",vrijgesteld:true},
-  {naam:"Dylan Teugels",tia_naam:"Teugels Dylan",team:"Team 2",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Rick Van Boxstael",tia_naam:"Van Boxstael Rick",team:"Consultants",rol:"PO",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Matse Van Horebeek",tia_naam:"Van Horebeek Matse",team:null,rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Dieter Van Stijvendael",tia_naam:"Van Stijvendael Dieter",team:null,rol:"PO",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Arne Van den Langenbergh",tia_naam:"Van den Langenbergh Arne",team:"Team 3",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Elwyn Van der Borght",tia_naam:"Van der Borght Elwyn",team:"Team 5",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Sarah Van der Perren",tia_naam:"Van der Perren Sarah",team:null,rol:"PO",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Bert Vandermeulen",tia_naam:"Vandermeulen Bert",team:null,rol:"Sales",taal:"nl",type:"medewerker",vrijgesteld:true},
-  {naam:"Jordy Vandewalle",tia_naam:"Vandewalle Jordy",team:null,rol:"PO",taal:"es",type:"medewerker",vrijgesteld:false},
-  {naam:"Shauni Vansteyvoort",tia_naam:"Vansteyvoort Shauni",team:null,rol:"PO",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Bert Verbessem",tia_naam:"Verbessem Bert",team:null,rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Raul Verdugo Lorenzo",tia_naam:"Verdugo Lorenzo Raul",team:"Team 2",rol:"DEV",taal:"es",type:"medewerker",vrijgesteld:false},
-  {naam:"Hans Vereyken",tia_naam:"Vereyken Hans",team:"Team 3",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Toon Verwerft",tia_naam:"Verwerft Toon",team:"Team 5",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Sarah Vrielinck",tia_naam:"Vrielinck Sarah",team:"Team 4",rol:"DEV",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Tom Vrolix",tia_naam:"Vrolix Tom",team:null,rol:"PM",taal:"nl",type:"medewerker",vrijgesteld:false},
-  {naam:"Sergii Zheleznytskyi",tia_naam:"Zheleznytskyi Sergii",team:"Team 2",rol:"DEV",taal:"ua",type:"contractor",vrijgesteld:true},
-];
-
-const PROJECTEN_FALLBACK = [
-  {ord:"ORD07000",pm:"Erik Michiels",type:"actief"},{ord:"ORD10922",pm:"Tom Vrolix",type:"actief"},{ord:"ORD12482",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD13820",pm:"Tom Vrolix",type:"actief"},{ord:"ORD16505",pm:"Jordy Janssens",type:"actief"},{ord:"ORD16820",pm:"Erik Michiels",type:"actief"},{ord:"ORD16886",pm:"Jordy Janssens",type:"actief"},{ord:"ORD16943",pm:"Pieter Beckers",type:"actief"},{ord:"ORD20933",pm:"Jordy Janssens",type:"actief"},{ord:"ORD24613",pm:"Jordy Janssens",type:"actief"},{ord:"ORD25011",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD25809",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD26026",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD26157",pm:"Sandy Peeters",type:"actief"},{ord:"ORD26891",pm:"Pieter Beckers",type:"actief"},{ord:"ORD27016",pm:"Karl Steinhauer",type:"actief"},{ord:"ORD27166",pm:"Sandy Peeters",type:"actief"},{ord:"ORD27211",pm:"Sandy Peeters",type:"actief"},{ord:"ORD27224",pm:"Sandy Peeters",type:"actief"},{ord:"ORD27301",pm:"Sandy Peeters",type:"actief"},{ord:"ORD06470",pm:"Erik Michiels",type:"actief"},{ord:"ORD10063",pm:"Erik Michiels",type:"actief"},{ord:"ORD10457",pm:"Erik Michiels",type:"actief"},{ord:"ORD13926",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD14135",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD14137",pm:"Jordy Janssens",type:"actief"},{ord:"ORD14611",pm:"Jordy Janssens",type:"actief"},{ord:"ORD17446",pm:"Tom Vrolix",type:"actief"},{ord:"ORD18196",pm:"Tom Vrolix",type:"actief"},{ord:"ORD18328",pm:"Pieter Beckers",type:"actief"},{ord:"ORD19525",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD19791",pm:"Sandy Peeters",type:"actief"},{ord:"ORD19819",pm:"Jordy Janssens",type:"actief"},{ord:"ORD23253",pm:"Jordy Janssens",type:"actief"},{ord:"ORD23905",pm:"Erik Michiels",type:"actief"},{ord:"ORD26027",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD27430",pm:"Jordy Janssens",type:"actief"},{ord:"ORD27535",pm:"Jordy Janssens",type:"actief"},{ord:"ORD10267",pm:"Wim Pierson",type:"actief"},{ord:"ORD12310",pm:"Wim Pierson",type:"actief"},{ord:"ORD13525",pm:"Wim Pierson",type:"actief"},{ord:"ORD16503",pm:"Jordy Janssens",type:"actief"},{ord:"ORD18681",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD19548",pm:"Jordy Janssens",type:"actief"},{ord:"ORD19552",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD19557",pm:"Erik Michiels",type:"actief"},{ord:"ORD19558",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD19559",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD19560",pm:"Tom Vrolix",type:"actief"},{ord:"ORD19562",pm:"Tom Vrolix",type:"actief"},{ord:"ORD19563",pm:"Tom Vrolix",type:"actief"},{ord:"ORD19567",pm:"Sandy Peeters",type:"actief"},{ord:"ORD19818",pm:"Jordy Janssens",type:"actief"},{ord:"ORD23254",pm:"Jordy Janssens",type:"actief"},{ord:"ORD24274",pm:"Jordy Janssens",type:"actief"},{ord:"ORD24275",pm:"Erik Michiels",type:"actief"},{ord:"ORD24511",pm:"Jordy Janssens",type:"actief"},{ord:"ORD24584",pm:"Jordy Janssens",type:"actief"},{ord:"ORD24612",pm:"Jordy Janssens",type:"actief"},{ord:"ORD24616",pm:"Jordy Janssens",type:"actief"},{ord:"ORD24619",pm:"Jordy Janssens",type:"actief"},{ord:"ORD24622",pm:"Jordy Janssens",type:"actief"},{ord:"ORD24626",pm:"Jordy Janssens",type:"actief"},{ord:"ORD25219",pm:"Erik Michiels",type:"actief"},{ord:"ORD25748",pm:"Erik Michiels",type:"actief"},{ord:"ORD25781",pm:"Jordy Janssens",type:"actief"},{ord:"ORD26033",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD26082",pm:"Nathalie De Martin",type:"actief"},{ord:"ORD26343",pm:"Jordy Janssens",type:"actief"},{ord:"ORD26351",pm:"Jordy Janssens",type:"actief"},{ord:"ORD26750",pm:"Tom Bauwens",type:"actief"},{ord:"ORD26999",pm:"Sandy Peeters",type:"actief"},{ord:"ORD27063",pm:"Tom Bauwens",type:"actief"},{ord:"ORD27138",pm:"Alexander Adriaensen",type:"actief"},{ord:"ORD27165",pm:"Sandy Peeters",type:"actief"},{ord:"ORD27210",pm:"Sandy Peeters",type:"actief"},{ord:"ORD27300",pm:"Sandy Peeters",type:"actief"},{ord:"ORD15059",pm:"Tom Bauwens",type:"actief"},{ord:"ORD15184",pm:"Jordy Janssens",type:"actief"},{ord:"ORD20110",pm:"Tom Bauwens",type:"actief"},{ord:"ORD26156",pm:"Sandy Peeters",type:"actief"},{ord:"ORD07466",pm:"Tom Bauwens",type:"actief"},
-  {ord:"ORD08848",pm:null,type:"detachering"},{ord:"ORD09574",pm:null,type:"detachering"},{ord:"ORD14442",pm:null,type:"detachering"},{ord:"ORD14543",pm:null,type:"detachering"},{ord:"ORD17126",pm:null,type:"detachering"},{ord:"ORD20836",pm:null,type:"detachering"},{ord:"ORD21434",pm:null,type:"detachering"},{ord:"ORD23810",pm:null,type:"detachering"},{ord:"ORD25048",pm:null,type:"detachering"},{ord:"ORD26150",pm:null,type:"detachering"},{ord:"ORD26705",pm:null,type:"detachering"},{ord:"ORD27321",pm:null,type:"detachering"},
-  {ord:"ORD05716",pm:null,type:"intern"},{ord:"ORD07213",pm:null,type:"intern"},{ord:"ORD07424",pm:null,type:"intern"},{ord:"ORD08557",pm:null,type:"intern"},{ord:"ORD09403",pm:null,type:"intern"},{ord:"ORD09486",pm:null,type:"intern"},{ord:"ORD09597",pm:null,type:"intern"},{ord:"ORD10392",pm:null,type:"intern"},{ord:"ORD10450",pm:null,type:"intern"},{ord:"ORD10763",pm:null,type:"intern"},{ord:"ORD11441",pm:null,type:"intern"},{ord:"ORD11590",pm:null,type:"intern"},{ord:"ORD12374",pm:null,type:"intern"},{ord:"ORD12967",pm:null,type:"intern"},{ord:"ORD13124",pm:null,type:"intern"},{ord:"ORD13302",pm:null,type:"intern"},{ord:"ORD16768",pm:null,type:"intern"},{ord:"ORD16769",pm:null,type:"intern"},{ord:"ORD19877",pm:null,type:"intern"},{ord:"ORD20286",pm:null,type:"intern"},{ord:"ORD23692",pm:null,type:"intern"},{ord:"ORD25738",pm:null,type:"intern"},{ord:"ORD25913",pm:null,type:"intern"},{ord:"ORD25945",pm:null,type:"intern"},
-  {ord:"ORD27624",pm:"Pieter Beckers",type:"actief"},
-];
-
-const BEHEERDERS = [
-  {naam:"Wim Pierson",initials:"WP",functie:"Managing Partner",tia_naam:"Pierson Wim"},
-  {naam:"Nathalie De Martin",initials:"ND",functie:"Managing Partner",tia_naam:"De Martin Nathalie"},
-  {naam:"Jeroen Smolders",initials:"JS",functie:"Managing Partner",tia_naam:"Smolders Jeroen"},
-  {naam:"Kenny Rassin",initials:"KR",functie:"Managing Partner",tia_naam:"Rassin Kenny"},
-];
-
-async function fetchConfig() {
-  const [cRes, pRes] = await Promise.all([
-    fetch(`${RAW_BASE}/consultants.json`),
-    fetch(`${RAW_BASE}/projecten.json`),
-  ]);
-  if (!cRes.ok) throw new Error(`consultants.json: HTTP ${cRes.status}`);
-  if (!pRes.ok) throw new Error(`projecten.json: HTTP ${pRes.status}`);
-  const [c, p] = await Promise.all([cRes.json(), pRes.json()]);
-  return { consultants: c.consultants, projecten: p.projecten };
-}
-
 function parseCSV(text) {
   const lines = text.trim().split(/\r?\n/);
   const headers = lines[0].split(";").map(h => h.trim().replace(/^"|"$/g, ""));
@@ -234,9 +217,9 @@ function ordKey(code, desc) {
   return m ? m[1].toUpperCase() : null;
 }
 
-function analyze(rows, consultants, projecten) {
+function analyze(rows) {
   const cmap0 = {};
-  consultants.forEach(c => cmap0[c.tia_naam] = c);
+  CONSULTANTS.forEach(c => cmap0[c.tia_naam] = c);
   const holsByLang = {};
   rows.forEach(r => {
     if (r.TsCodeDescription !== "Feestdagen") return;
@@ -250,7 +233,7 @@ function analyze(rows, consultants, projecten) {
   rows.forEach(r => { if (r.IsBillable==="Billable") { const o=ordKey(r.TsCode,r.TsCodeDescription); if(o) billable.add(o); } });
   const allOrds = new Set();
   rows.forEach(r => { const o=ordKey(r.TsCode,r.TsCodeDescription); if(o) allOrds.add(o); });
-  const projSet = new Set(projecten.map(p=>p.ord.toUpperCase()));
+  const projSet = new Set(PROJECTEN.map(p=>p.ord.toUpperCase()));
   const ordsZonderPM = [...allOrds].filter(o=>!projSet.has(o));
   const fd = parseDate(rows[0]?.WorkDate);
   const year = fd?.getFullYear()||new Date().getFullYear();
@@ -259,11 +242,9 @@ function analyze(rows, consultants, projecten) {
   const exp = workDays.length * 8;
   const byEmp = {};
   rows.forEach(r => { if(!byEmp[r.Employee]) byEmp[r.Employee]=[]; byEmp[r.Employee].push(r); });
-  const cmap = {};
-  consultants.forEach(c => cmap[c.tia_naam] = c);
   const results = [];
   for (const [emp, rs] of Object.entries(byEmp)) {
-    const cfg = cmap[emp]||null;
+    const cfg = cmap0[emp]||null;
     const isContractor = cfg?.type==="contractor";
     const dm = {};
     rs.forEach(r => {
@@ -378,9 +359,6 @@ function RoleSelect({ onSelect }) {
 export default function App() {
   const [step, setStep] = useState("loading");
   const [currentUser, setCurrentUser] = useState(null);
-  const [consultants, setConsultants] = useState(CONSULTANTS_FALLBACK);
-  const [projecten, setProjecten] = useState(PROJECTEN_FALLBACK);
-  const [configSource, setConfigSource] = useState("fallback");
   const [analysis, setAnalysis] = useState(null);
   const [tab, setTab] = useState("alle");
   const [modal, setModal] = useState(null);
@@ -388,14 +366,6 @@ export default function App() {
 
   useEffect(() => {
     async function init() {
-      try {
-        const cfg = await fetchConfig();
-        setConsultants(cfg.consultants);
-        setProjecten(cfg.projecten);
-        setConfigSource("github");
-      } catch {
-        setConfigSource("fallback");
-      }
       try {
         const result = await window.storage.get(STORAGE_KEY);
         if (result?.value) {
@@ -428,12 +398,12 @@ export default function App() {
     r.onload = e => {
       try {
         const rows = parseCSV(e.target.result);
-        const result = analyze(rows, consultants, projecten);
+        const result = analyze(rows);
         setAnalysis(result); setStep("results");
       } catch(err) { alert("Fout bij analyse: " + err.message); }
     };
     r.readAsText(file, "utf-8");
-  }, [consultants, projecten]);
+  }, []);
 
   const counts = useMemo(() => {
     if (!analysis) return {};
@@ -473,9 +443,6 @@ export default function App() {
       <span className="logo">PHPro</span>
       <span className="page">Timesheet Compliance</span>
       <div className="topbar-spacer"/>
-      <span className={`config-badge${configSource==="github"?" live":""}`}>
-        {configSource==="github"?"● live config":"○ fallback"}
-      </span>
       {currentUser && (
         <div className="topbar-user">
           <div className="avatar">{currentUser.initials}</div>
