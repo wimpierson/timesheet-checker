@@ -154,9 +154,7 @@ function analyze(rows, consultants, projecten) {
   // Pre-pass: ORDs zonder PM
   const allOrds = new Set();
   rows.forEach(r => { const o=ordKey(r.TsCode,r.TsCodeDescription); if(o) allOrds.add(o); });
-  const projOrds = new Set(projecten.map(p=>p.ord.toUpperCase()));
-  // Enkel ORDs flaggen die volledig onbekend zijn (niet in projecten.json)
-  // intern/detachering worden geskipt — die zijn bewust zonder PM
+  // Enkel ORDs flaggen die volledig onbekend zijn — intern/detachering/actief worden allemaal geskipt
   const projSet = new Set(projecten.map(p=>p.ord.toUpperCase()));
   const ordsZonderPM = [...allOrds].filter(o=>!projSet.has(o));
 
@@ -432,6 +430,7 @@ const PROJECTEN=[
   {ord:"ORD25738",pm:null,type:"intern"},
   {ord:"ORD25913",pm:null,type:"intern"},
   {ord:"ORD25945",pm:null,type:"intern"},
+  {ord:"ORD27624",pm:"Pieter Beckers",type:"actief"},
 ]
 
 function Modal({r, onClose}) {
